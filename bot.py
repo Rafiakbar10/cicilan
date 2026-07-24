@@ -1,6 +1,6 @@
 import os
 import logging
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -8,6 +8,7 @@ from telegram.ext import (
     filters,
     ConversationHandler,
     ContextTypes,
+    CallbackQueryHandler,
 )
 
 # Konfigurasi Logging
@@ -33,9 +34,10 @@ def ambil_biaya_perlindungan(harga: float) -> float:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
-        "🏢 *Home Credit Indonesia*\n\n"
-        "📦 Silakan masukkan **Harga Barang** yang ingin Anda hitung:\n"
-        "_(Contoh: `5000000` atau `5.000.000`)_"
+        "🏢 *HOME CREDIT INDONESIA*\n\n"
+        "Halo Kak 👋\n"
+        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin Anda cicil:\n"
+        "_(Contoh: `5000000` atau `12500000`)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
@@ -50,7 +52,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         context.user_data["harga"] = harga
         
         await update.message.reply_text(
-            f"✅ Harga Barang dicatat: *Rp {harga:,.0f}*\n\n"
+            f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
             "⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan:\n"
             "_(Contoh: `6`, `12`, `24`)_",
             parse_mode="Markdown"
@@ -75,6 +77,13 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         total_keseluruhan = harga + biaya_perlindungan
         cicilan_per_bulan = total_keseluruhan / tenor
 
+        # Membuat tombol interaktif di bawah pesan
+        keyboard = [
+            [InlineKeyboardButton("💬 Hubungi WhatsApp Admin", url="https://wa.me/6285935491278")],
+            [InlineKeyboardButton("🔄 Hitung Simulasi Baru", callback_data="ulang")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
         pesan_hasil = (
             "━━━━━━━━━━━━━━━━━━━━━━\n"
             "📊 **HASIL SIMULASI CICILAN** 📊\n"
@@ -87,17 +96,26 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
             "ℹ️ **Catatan:**\n"
             "• Bunga 0% tergantung NIK masing-masing\n"
-            "📞 **Hubungi Kami (WhatsApp):**\n"
-            "👉 wa.me/6285935491278\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "🔄 Ketik /start untuk melakukan simulasi baru."
+            "━━━━━━━━━━━━━━━━━━━━━━"
         )
         
-        await update.message.reply_text(pesan_hasil, parse_mode="Markdown")
+        await update.message.reply_text(pesan_hasil, parse_mode="Markdown", reply_markup=reply_markup)
         return ConversationHandler.END
     except ValueError:
         await update.message.reply_text("⚠️ Format tenor tidak valid. Masukkan angka bulat untuk jumlah bulan (contoh: `12`):")
         return GET_TENOR
+
+# Handler tombol inline "Hitung Simulasi Baru"
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    if query.data == "ulang":
+        await query.message.reply_text(
+            "✨ *MULAI SIMULASI BARU* ✨\n\n"
+            "📦 Silakan masukkan **Harga Barang** baru yang ingin Anda cicil:",
+            parse_mode="Markdown"
+        )
+        return GET_PRICE
 
 # /cancel command
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -113,7 +131,7 @@ def main() -> None:
     application = Application.builder().token(TOKEN).build()
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        entry_points=[CommandHandler("start", start), CallbackQueryHandler(button_callback, pattern="ulang")],
         states={
             GET_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_price)],
             GET_TENOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_tenor)],
