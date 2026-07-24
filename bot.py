@@ -44,7 +44,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
         "🏢 *HOME CREDIT INDONESIA*\n\n"
         "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n\n"
-        "_(Contoh: `6000000` atau `12500000`)_"
+        "_(Contoh: 5.000.000 atau 5000000)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
@@ -60,7 +60,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan:\n/n"
+            "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan:\n\n"
             "_(Ketik 0 jika tanpa DP, atau masukkan nominal seperti 200.000-1.000.000)_",
             parse_mode="Markdown"
         )
