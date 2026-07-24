@@ -19,22 +19,25 @@ logger = logging.getLogger(__name__)
 # State untuk ConversationHandler
 GET_PRICE, GET_TENOR = range(2)
 
-# Fungsi Hitung Asuransi "Santai"
-def hitung_asuransi(harga: float) -> float:
+# Fungsi Biaya Perlindungan Barang di Rumah
+def hitung_perlindungan(harga: float) -> float:
     if 1_000_000 <= harga <= 10_000_000:
         return 599_000
     elif 10_000_000 < harga <= 30_000_000:
         return 899_000
     elif harga > 30_000_000:
-        return 1_299_000  # Tambahan opsional jika di atas 30jt
+        return 1_299_000
     return 0.0
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text(
-        "Halo! Selamat datang di **Bot Simulasi Cicilan**.\n\n"
-        "Silakan masukkan **Harga Barang** (contoh: `5000000` atau `12500000`):"
+    pesan_mulai = (
+        "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n\n"
+        "Halo! Bot ini membantu Anda menghitung estimasi cicilan bulanan dengan mudah dan transparan.\n\n"
+        "📦 Silakan masukkan **Harga Barang** yang ingin Anda cicil:\n"
+        "_(Contoh: `5000000` atau `12500000`)_"
     )
+    await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
 
 # Menerima Harga
@@ -46,13 +49,15 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             raise ValueError
         context.user_data["harga"] = harga
         
-        await update.message.reply_text(
-            f"Harga barang dicatat: **Rp {harga:,.0f}**\n\n"
-            "Sekarang, masukkan **Tenor Cicilan** dalam bulan (contoh: `6`, `12`, `24`):"
+        pesan_tenor = (
+            f"✅ Harga Barang dicatat: *Rp {harga:,.0f}*\n\n"
+            "⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan:\n"
+            "_(Contoh: `6`, `12`, `24`)_"
         )
+        await update.message.reply_text(pesan_tenor, parse_mode="Markdown")
         return GET_TENOR
     except ValueError:
-        await update.message.reply_text("Format harga tidak valid. Masukkan angka saja (contoh: `7500000`):")
+        await update.message.reply_text("⚠️ Format harga tidak valid. Masukkan angka saja tanpa titik/koma (contoh: `7500000`):")
         return GET_PRICE
 
 # Menerima Tenor dan Hitung Hasil Simulasi
@@ -64,40 +69,43 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             raise ValueError
         
         harga = context.user_data["harga"]
-        asuransi = hitung_asuransi(harga)
-        total_pokok_asuransi = harga + asuransi
+        biaya_perlindungan = hitung_perlindungan(harga)
+        total_pokok_perlindungan = harga + biaya_perlindungan
         
-        # Simulasi bunga sederhana (misal 1.5% flat per bulan dari harga barang)
+        # Simulasi bunga (1.5% flat per bulan dari harga barang)
         bunga_per_bulan = (harga * 0.015) 
         total_bunga = bunga_per_bulan * tenor
         
-        total_keseluruhan = total_pokok_asuransi + total_bunga
+        total_keseluruhan = total_pokok_perlindungan + total_bunga
         cicilan_per_bulan = total_keseluruhan / tenor
 
-        pesan = (
-            f"📊 **HASIL SIMULASI CICILAN** 📊\n\n"
-            f"• Harga Barang: Rp {harga:,.0f}\n"
-            f"• Asuransi Santai: Rp {asuransi:,.0f}\n"
-            f"• Tenor: {tenor} Bulan\n"
-            f"-----------------------------------\n"
-            f"• **Cicilan per Bulan: Rp {cicilan_per_bulan:,.0f} / bln**\n"
-            f"• Total Pembayaran: Rp {total_keseluruhan:,.0f}\n\n"
-            f"Ketik /start untuk menghitung simulasi baru."
+        pesan_hasil = (
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📊 **HASIL SIMULASI CICILAN** 📊\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🏷️ **Harga Barang:** Rp {harga:,.0f}\n"
+            f"🛡️ **Perlindungan Barang di Rumah:** Rp {biaya_perlindungan:,.0f}\n"
+            f"📅 **Tenor Cicilan:** {tenor} Bulan\n\n"
+            "--------------------------------------\n"
+            f"💳 **Cicilan per Bulan:**\n"
+            f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
+            f"💰 **Total Pembayaran:** Rp {total_keseluruhan:,.0f}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🔄 Ketik /start untuk melakukan simulasi baru."
         )
         
-        await update.message.reply_text(pesan, parse_mode="Markdown")
+        await update.message.reply_text(pesan_hasil, parse_mode="Markdown")
         return ConversationHandler.END
     except ValueError:
-        await update.message.reply_text("Format tenor tidak valid. Masukkan angka bulat bulan (contoh: `12`):")
+        await update.message.reply_text("⚠️ Format tenor tidak valid. Masukkan angka bulat untuk jumlah bulan (contoh: `12`):")
         return GET_TENOR
 
 # /cancel command
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("Simulasi dibatalkan. Ketik /start untuk mulai lagi.")
+    await update.message.reply_text("❌ Simulasi dibatalkan. Ketik /start untuk memulai kembali.")
     return ConversationHandler.END
 
 def main() -> None:
-    # Ambil Token dari Environment Variable Railway
     TOKEN = os.getenv("TELEGRAM_TOKEN")
     if not TOKEN:
         logger.error("TELEGRAM_TOKEN tidak ditemukan di environment variables!")
@@ -115,10 +123,7 @@ def main() -> None:
     )
 
     application.add_handler(conv_handler)
-
-    # Menjalankan bot dengan polling
     application.run_polling()
 
 if __name__ == "__main__":
     main()
-      
