@@ -43,9 +43,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
         "🏢 *HOME CREDIT INDONESIA*\n\n"
-        "Halo Kak 👋\n"
-        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin Anda cicil:\n"
-        "_(Contoh: `5000000` atau `5.000.000`)_"
+        
+        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n"
+        "_(Contoh: 5.000.000 atau 5000000)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
@@ -62,7 +62,8 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
             "⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan (pilihan: 3, 6, 9, 12, 15, 18, 21, 24):\n"
-            "_(Contoh: `6`, `12`, `24`)_",
+            
+            "_(Contoh: 6, 12, 24)_",
             parse_mode="Markdown"
         )
         return GET_TENOR
@@ -107,7 +108,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             f"💳 **Cicilan per Bulan:**\n"
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
             "ℹ️ **Catatan:**\n"
-            "• Bunga 0% tergantung NIK masing-masing\n"
+            "• Bunga dan Admin tergantung NIK atau Akun masing-masing\n"
             "━━━━━━━━━━━━━━━━━━━━━━"
         )
         
@@ -124,7 +125,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query.data == "ulang":
         await query.message.reply_text(
             "✨ *MULAI SIMULASI BARU* ✨\n\n"
-            "📦 Silakan masukkan **Harga Barang** baru yang ingin Anda cicil:",
+            "📦 Silakan masukkan **Harga Barang** baru yang ingin anda hitung:",
             parse_mode="Markdown"
         )
         return GET_PRICE
