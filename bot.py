@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 # State untuk ConversationHandler
 GET_PRICE, GET_TENOR = range(2)
 
-# Fungsi Biaya Perlindungan Barang di Rumah
-def hitung_perlindungan(harga: float) -> float:
+# Fungsi untuk mengambil nominal perlindungan (hanya untuk dihitung di balik layar, tidak ditampilkan nominalnya)
+def ambil_biaya_perlindungan(harga: float) -> float:
     if 1_000_000 <= harga <= 10_000_000:
         return 599_000
     elif 10_000_000 < harga <= 30_000_000:
@@ -69,14 +69,15 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             raise ValueError
         
         harga = context.user_data["harga"]
-        biaya_perlindungan = hitung_perlindungan(harga)
-        total_pokok_perlindungan = harga + biaya_perlindungan
+        biaya_perlindungan = ambil_biaya_perlindungan(harga)
         
-        # Simulasi bunga (1.5% flat per bulan dari harga barang)
-        bunga_per_bulan = (harga * 0.015) 
-        total_bunga = bunga_per_bulan * tenor
+        # Rumus Cicilan: 
+        # (Harga Barang + Biaya Perlindungan) dibagi dengan Tenor, 
+        # ditambah estimasi bunga flat ringan per bulan dari harga barang
+        total_pokok_plus_perlindungan = harga + biaya_perlindungan
+        bunga_per_bulan = (harga * 0.015)  # Simulasi bunga flat 1.5% per bulan
         
-        total_keseluruhan = total_pokok_perlindungan + total_bunga
+        total_keseluruhan = total_pokok_plus_perlindungan + (bunga_per_bulan * tenor)
         cicilan_per_bulan = total_keseluruhan / tenor
 
         pesan_hasil = (
@@ -84,12 +85,12 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             "📊 **HASIL SIMULASI CICILAN** 📊\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🏷️ **Harga Barang:** Rp {harga:,.0f}\n"
-            f"🛡️ **Perlindungan Barang di Rumah:** Rp {biaya_perlindungan:,.0f}\n"
             f"📅 **Tenor Cicilan:** {tenor} Bulan\n\n"
             "--------------------------------------\n"
             f"💳 **Cicilan per Bulan:**\n"
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
-            f"💰 **Total Pembayaran:** Rp {total_keseluruhan:,.0f}\n"
+            f"💰 **Total Pembayaran:** Rp {total_keseluruhan:,.0f}\n\n"
+            "ℹ️ _Catatan: Harga di atas sudah termasuk perlindungan barang-barang di rumah._\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n"
             "🔄 Ketik /start untuk melakukan simulasi baru."
         )
