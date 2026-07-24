@@ -16,7 +16,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# State untuk ConversationHandler: Langsung Harga, lalu Tenor (tanpa input NIK)
+# State untuk ConversationHandler
 GET_PRICE, GET_TENOR = range(2)
 
 # Fungsi untuk mengambil nominal perlindungan di balik layar
@@ -32,7 +32,8 @@ def ambil_biaya_perlindungan(harga: float) -> float:
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
-        "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n\n"
+        "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
+        "🏢 *Home Credit Indonesia*\n\n"
         "📦 Silakan masukkan **Harga Barang** yang ingin Anda cicil:\n"
         "_(Contoh: `5000000` atau `12500000`)_"
     )
@@ -77,14 +78,18 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         pesan_hasil = (
             "━━━━━━━━━━━━━━━━━━━━━━\n"
             "📊 **HASIL SIMULASI CICILAN** 📊\n"
+            "🏢 **Home Credit Indonesia**\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🏷️ **Harga Barang:** Rp {harga:,.0f}\n"
             f"📅 **Tenor Cicilan:** {tenor} Bulan\n\n"
             "--------------------------------------\n"
             f"💳 **Cicilan per Bulan:**\n"
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
-            f"💰 **Total Pembayaran:** Rp {total_keseluruhan:,.0f}\n\n"
-            "ℹ️ _Catatan: Sudah termasuk perlindungan barang-barang di rumah. Bunga 0% tergantung NIK masing-masing._\n"
+            "ℹ️ **Catatan:**\n"
+            "• Bunga 0% tergantung NIK masing-masing\n"
+            "• Sudah termasuk perlindungan barang-barang di rumah\n\n"
+            "📞 **Hubungi Kami (WhatsApp):**\n"
+            "👉 wa.me/6285935491278\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n"
             "🔄 Ketik /start untuk melakukan simulasi baru."
         )
