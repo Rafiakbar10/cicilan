@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # State untuk ConversationHandler
 GET_PRICE, GET_TENOR = range(2)
 
-# Fungsi untuk mengambil nominal perlindungan di balik layar
+# Fungsi untuk mengambil nominal perlindungan di balik layar berdasarkan harga barang
 def ambil_biaya_perlindungan(harga: float) -> float:
     if 1_000_000 <= harga <= 10_000_000:
         return 599_000
@@ -30,6 +30,14 @@ def ambil_biaya_perlindungan(harga: float) -> float:
         return 1_299_000
     return 0.0
 
+# Fungsi untuk mengambil biaya admin di balik layar berdasarkan tenor
+def ambil_biaya_admin(tenor: int) -> float:
+    if tenor in [3, 6, 9, 12]:
+        return 199_000
+    elif tenor in [15, 18, 21, 24]:
+        return 299_000
+    return 0.0
+
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
@@ -37,7 +45,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "🏢 *HOME CREDIT INDONESIA*\n\n"
         "Halo Kak 👋\n"
         "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin Anda cicil:\n"
-        "_(Contoh: `5000000` atau `12500000`)_"
+        "_(Contoh: `5000000` atau `5.000.000`)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
@@ -53,7 +61,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan:\n"
+            "⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan (pilihan: 3, 6, 9, 12, 15, 18, 21, 24):\n"
             "_(Contoh: `6`, `12`, `24`)_",
             parse_mode="Markdown"
         )
@@ -71,10 +79,14 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             raise ValueError
         
         harga = context.user_data["harga"]
-        biaya_perlindungan = ambil_biaya_perlindungan(harga)
         
-        # Kalkulasi murni tanpa bunga tambahan
-        total_keseluruhan = harga + biaya_perlindungan
+        # Hitung komponen tambahan di balik layar
+        biaya_perlindungan = ambil_biaya_perlindungan(harga)
+        biaya_admin = ambil_biaya_admin(tenor)
+        total_biaya_bulanan = 10_000 * tenor  # Biaya bulanan Rp10.000 dikali jumlah tenor
+        
+        # Kalkulasi total keseluruhan di balik layar
+        total_keseluruhan = harga + biaya_perlindungan + biaya_admin + total_biaya_bulanan
         cicilan_per_bulan = total_keseluruhan / tenor
 
         # Membuat tombol interaktif di bawah pesan
