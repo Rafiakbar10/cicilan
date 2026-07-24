@@ -34,8 +34,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
         "🏢 *Home Credit Indonesia*\n\n"
-        "📦 Silakan masukkan **Harga Barang** yang ingin Anda cicil:\n"
-        "_(Contoh: `5000000` atau `12500000`)_"
+        "📦 Silakan masukkan **Harga Barang** yang ingin Anda hitung:\n"
+        "_(Contoh: `5000000` atau `5.000.000`)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
@@ -87,7 +87,6 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
             "ℹ️ **Catatan:**\n"
             "• Bunga 0% tergantung NIK masing-masing\n"
-            "• Sudah termasuk perlindungan barang-barang di rumah\n\n"
             "📞 **Hubungi Kami (WhatsApp):**\n"
             "👉 wa.me/6285935491278\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n"
