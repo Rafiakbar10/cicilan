@@ -71,7 +71,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "💵 Sekarang, masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
+            "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
             "_(Ketik 0 jika tanpa DP, atau masukkan nominal seperti 10.000-1.000.000)_",
             parse_mode="Markdown"
         )
@@ -104,7 +104,7 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
-            f"⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
+            f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
             "_(Contoh: 6 , 12)_",
             parse_mode="Markdown"
         )
@@ -130,7 +130,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
         if tenor not in pilihan_valid:
             await update.message.reply_text(
-                "⚠️ **Tenor tidak ada di pilihan!**\n"
+                "⚠️ Tenor tidak ada di pilihan!\n"
                 f"Silakan masukkan tenor yang tersedia untuk kategori ini: ({', '.join(map(str, pilihan_valid))}) bulan."
             )
             return GET_TENOR
