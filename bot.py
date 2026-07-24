@@ -62,7 +62,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan (pilihan: 3, 6, 9, 12, 15, 18, 21, 24):\n"
+            "⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan (pilihan: 3, 6, 9, 12, 15, 18, 21, 24)\n\n"
             
             "_(Contoh: 6, 12, 24)_",
             parse_mode="Markdown"
