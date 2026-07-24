@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 # State untuk ConversationHandler: Harga -> DP -> Tenor
 GET_PRICE, GET_DP, GET_TENOR = range(3)
 
+# Daftar pilihan tenor yang diizinkan secara umum
+DAFTAR_TENOR_UMUM = [3, 6, 9, 12, 15, 18, 21, 24]
+DAFTAR_TENOR_PENDEK = [3, 6, 9, 12]
+
 # Fungsi untuk mengambil nominal perlindungan di balik layar berdasarkan SISA POKOK (setelah DP)
 def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
     if 1_000_000 <= sisa_pokok <= 10_000_000:
@@ -118,11 +122,16 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         dp = context.user_data["dp"]
         sisa_pokok = harga - dp
         
-        # Validasi batasan tenor berdasarkan sisa pokok (maksimal 12 bulan jika sisa pokok 1 - 5 juta)
-        if 1_000_000 <= sisa_pokok <= 5_000_000 and tenor > 12:
+        # Validasi apakah tenor ada di dalam pilihan yang diizinkan
+        if 1_000_000 <= sisa_pokok <= 5_000_000:
+            pilihan_valid = DAFTAR_TENOR_PENDEK
+        else:
+            pilihan_valid = DAFTAR_TENOR_UMUM
+
+        if tenor not in pilihan_valid:
             await update.message.reply_text(
-                "⚠️ Berdasarkan sisa pokok setelah DP (Rp 1.000.000 - Rp 5.000.000), tenor maksimal adalah **12 bulan**.\n"
-                "Silakan masukkan ulang tenor yang valid (contoh: `3`, `6`, `9`, `12`):"
+                "⚠️ **Tenor tidak ada di pilihan!**\n"
+                f"Silakan masukkan tenor yang tersedia untuk kategori ini: ({', '.join(map(str, pilihan_valid))}) bulan."
             )
             return GET_TENOR
             
@@ -165,7 +174,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text(pesan_hasil, parse_mode="Markdown", reply_markup=reply_markup)
         return ConversationHandler.END
     except ValueError:
-        await update.message.reply_text("⚠️ Format tenor tidak valid. Masukkan angka bulat untuk jumlah bulan (contoh: `12`):")
+        await update.message.reply_text("⚠️ **Tenor tidak ada di pilihan!** Masukkan angka bulat untuk jumlah bulan yang valid:")
         return GET_TENOR
 
 # Handler tombol inline "Hitung Simulasi Baru"
