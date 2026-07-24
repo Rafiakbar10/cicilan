@@ -38,11 +38,11 @@ def ambil_biaya_admin(tenor: int) -> float:
         return 299_000
     return 0.0
 
-# Fungsi untuk mengambil persentase bunga berdasarkan sisa pokok
+# Fungsi untuk mengambil persentase bunga berdasarkan sisa pokok (diset ke 2,250% atau 0.0225)
 def ambil_persen_bunga(sisa_pokok: float) -> float:
     if 1_000_000 <= sisa_pokok <= 5_000_000:
-        return 0.0225  # Bunga 2.25% untuk sisa pokok 1-5 juta
-    return 0.00         # Bunga 0% untuk kategori lainnya (atau sesuai aturan sebelumnya)
+        return 0.02250  # Bunga 2,250% untuk sisa pokok 1-5 juta
+    return 0.00         # Bunga 0% untuk kategori lainnya
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -131,7 +131,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         biaya_admin = ambil_biaya_admin(tenor)
         total_biaya_bulanan = 10_000 * tenor  # Biaya bulanan Rp10.000 dikali jumlah tenor
         
-        # Hitung bunga berdasarkan sisa pokok (2.25% per bulan jika sisa pokok 1-5 juta)
+        # Hitung bunga berdasarkan sisa pokok (2,250% per bulan jika sisa pokok 1-5 juta)
         persen_bunga = ambil_persen_bunga(sisa_pokok)
         total_bunga = (sisa_pokok * persen_bunga) * tenor
         
