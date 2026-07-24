@@ -43,8 +43,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
         "🏢 *HOME CREDIT INDONESIA*\n\n"
-        "Halo Kak 👋\n"
-        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin Anda cicil:\n"
+        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n\n"
         "_(Contoh: `6000000` atau `12500000`)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
@@ -61,8 +60,8 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "💵 Sekarang, masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan:\n"
-            "_(Ketik `0` jika tanpa DP, atau masukkan nominal seperti `1000000`)_",
+            "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan:\n/n"
+            "_(Ketik 0 jika tanpa DP, atau masukkan nominal seperti 200.000-1.000.000)_",
             parse_mode="Markdown"
         )
         return GET_DP
@@ -88,14 +87,14 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         
         # Batasan tenor berdasarkan sisa pokok (1 jt - 5 jt maksimal 12 bulan)
         if 1_000_000 <= sisa_pokok <= 5_000_000:
-            info_tenor = "pilihan: 3, 6, 9, 12 bulan (Maksimal 12 bulan karena sisa pokok Rp 1 - 5 juta)"
+            info_tenor = "pilihan: 3, 6, 9, 12 bulan"
         else:
             info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
             
         await update.message.reply_text(
-            f"✅ DP tercatat: *Rp {dp:,.0f}* (Sisa Pokok: Rp {sisa_pokok:,.0f})\n\n"
-            f"⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor}):\n"
-            "_(Contoh: `6`, `12`)_",
+            f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
+            f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
+            "_(Contoh: 6 , 12)_",
             parse_mode="Markdown"
         )
         return GET_TENOR
@@ -148,7 +147,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             f"💳 **Cicilan per Bulan:**\n"
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
             "ℹ️ **Catatan:**\n"
-            "• Bunga 0% tergantung NIK masing-masing\n"
+            "• Bunga dan Admin tergantung NIK dan Akun masing-masing\n"
             "━━━━━━━━━━━━━━━━━━━━━━"
         )
         
@@ -165,7 +164,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query.data == "ulang":
         await query.message.reply_text(
             "✨ *MULAI SIMULASI BARU* ✨\n\n"
-            "📦 Silakan masukkan **Harga Barang** baru yang ingin Anda cicil:",
+            "📦 Silakan masukkan **Harga Barang** baru yang ingin anda hitung:",
             parse_mode="Markdown"
         )
         return GET_PRICE
