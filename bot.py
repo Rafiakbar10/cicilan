@@ -16,8 +16,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# State untuk ConversationHandler
-GET_NAME, GET_NIK, GET_PRICE, GET_TENOR = range(4)
+# State untuk ConversationHandler: Langsung Harga, lalu Tenor (tanpa input NIK)
+GET_PRICE, GET_TENOR = range(2)
 
 # Fungsi untuk mengambil nominal perlindungan di balik layar
 def ambil_biaya_perlindungan(harga: float) -> float:
@@ -33,26 +33,10 @@ def ambil_biaya_perlindungan(harga: float) -> float:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n\n"
-        "Halo! Silakan masukkan **Nama Lengkap** Anda untuk memulai simulasi:"
-    )
-    await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
-    return GET_NAME
-
-# Menerima Nama
-async def receive_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["nama"] = update.message.text.strip()
-    await update.message.reply_text(
-        "Terima kasih. Sekarang, masukkan nomor **NIK** Anda:"
-    )
-    return GET_NIK
-
-# Menerima NIK
-async def receive_nik(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["nik"] = update.message.text.strip()
-    await update.message.reply_text(
-        "📦 Masukkan **Harga Barang** yang ingin Anda cicil:\n"
+        "📦 Silakan masukkan **Harga Barang** yang ingin Anda cicil:\n"
         "_(Contoh: `5000000` atau `12500000`)_"
     )
+    await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
 
 # Menerima Harga
@@ -75,7 +59,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text("⚠️ Format harga tidak valid. Masukkan angka saja tanpa titik/koma (contoh: `7500000`):")
         return GET_PRICE
 
-# Menerima Tenor dan Hitung Hasil Simulasi (Bunga 0%)
+# Menerima Tenor dan Hitung Hasil Simulasi
 async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text.strip()
     try:
@@ -83,28 +67,24 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         if tenor <= 0:
             raise ValueError
         
-        nama = context.user_data["nama"]
-        nik = context.user_data["nik"]
         harga = context.user_data["harga"]
         biaya_perlindungan = ambil_biaya_perlindungan(harga)
         
-        # Bunga 0%: Total keseluruhan murni dari Harga Barang + Biaya Perlindungan
+        # Kalkulasi murni tanpa bunga tambahan
         total_keseluruhan = harga + biaya_perlindungan
         cicilan_per_bulan = total_keseluruhan / tenor
 
         pesan_hasil = (
             "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "📊 **HASIL SIMULASI CICILAN (0%)** 📊\n"
+            "📊 **HASIL SIMULASI CICILAN** 📊\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"👤 **Nama:** {nama}\n"
-            f"🆔 **NIK:** {nik}\n"
             f"🏷️ **Harga Barang:** Rp {harga:,.0f}\n"
             f"📅 **Tenor Cicilan:** {tenor} Bulan\n\n"
             "--------------------------------------\n"
-            f"💳 **Cicilan per Bulan (Bunga 0%):**\n"
+            f"💳 **Cicilan per Bulan:**\n"
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
             f"💰 **Total Pembayaran:** Rp {total_keseluruhan:,.0f}\n\n"
-            "ℹ️ _Catatan: Harga di atas sudah termasuk perlindungan barang-barang di rumah._\n"
+            "ℹ️ _Catatan: Sudah termasuk perlindungan barang-barang di rumah. Bunga 0% tergantung NIK masing-masing._\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n"
             "🔄 Ketik /start untuk melakukan simulasi baru."
         )
@@ -131,8 +111,6 @@ def main() -> None:
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            GET_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name)],
-            GET_NIK: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_nik)],
             GET_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_price)],
             GET_TENOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_tenor)],
         },
@@ -144,4 +122,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    
