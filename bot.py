@@ -44,7 +44,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
         "🏢 *HOME CREDIT INDONESIA*\n\n"
         
-        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n"
+        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n\n"
+        
         "_(Contoh: 5.000.000 atau 5000000)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
