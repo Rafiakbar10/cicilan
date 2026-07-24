@@ -17,9 +17,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # State untuk ConversationHandler
-GET_PRICE, GET_TENOR = range(2)
+GET_NAME, GET_NIK, GET_PRICE, GET_TENOR = range(4)
 
-# Fungsi untuk mengambil nominal perlindungan (hanya untuk dihitung di balik layar, tidak ditampilkan nominalnya)
+# Fungsi untuk mengambil nominal perlindungan di balik layar
 def ambil_biaya_perlindungan(harga: float) -> float:
     if 1_000_000 <= harga <= 10_000_000:
         return 599_000
@@ -33,11 +33,26 @@ def ambil_biaya_perlindungan(harga: float) -> float:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n\n"
-        "Halo! Bot ini membantu Anda menghitung estimasi cicilan bulanan dengan mudah dan transparan.\n\n"
-        "📦 Silakan masukkan **Harga Barang** yang ingin Anda cicil:\n"
-        "_(Contoh: `5000000` atau `12500000`)_"
+        "Halo! Silakan masukkan **Nama Lengkap** Anda untuk memulai simulasi:"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
+    return GET_NAME
+
+# Menerima Nama
+async def receive_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["nama"] = update.message.text.strip()
+    await update.message.reply_text(
+        "Terima kasih. Sekarang, masukkan nomor **NIK** Anda:"
+    )
+    return GET_NIK
+
+# Menerima NIK
+async def receive_nik(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["nik"] = update.message.text.strip()
+    await update.message.reply_text(
+        "📦 Masukkan **Harga Barang** yang ingin Anda cicil:\n"
+        "_(Contoh: `5000000` atau `12500000`)_"
+    )
     return GET_PRICE
 
 # Menerima Harga
@@ -49,18 +64,18 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             raise ValueError
         context.user_data["harga"] = harga
         
-        pesan_tenor = (
+        await update.message.reply_text(
             f"✅ Harga Barang dicatat: *Rp {harga:,.0f}*\n\n"
             "⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan:\n"
-            "_(Contoh: `6`, `12`, `24`)_"
+            "_(Contoh: `6`, `12`, `24`)_",
+            parse_mode="Markdown"
         )
-        await update.message.reply_text(pesan_tenor, parse_mode="Markdown")
         return GET_TENOR
     except ValueError:
         await update.message.reply_text("⚠️ Format harga tidak valid. Masukkan angka saja tanpa titik/koma (contoh: `7500000`):")
         return GET_PRICE
 
-# Menerima Tenor dan Hitung Hasil Simulasi
+# Menerima Tenor dan Hitung Hasil Simulasi (Bunga 0%)
 async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text.strip()
     try:
@@ -68,26 +83,25 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         if tenor <= 0:
             raise ValueError
         
+        nama = context.user_data["nama"]
+        nik = context.user_data["nik"]
         harga = context.user_data["harga"]
         biaya_perlindungan = ambil_biaya_perlindungan(harga)
         
-        # Rumus Cicilan: 
-        # (Harga Barang + Biaya Perlindungan) dibagi dengan Tenor, 
-        # ditambah estimasi bunga flat ringan per bulan dari harga barang
-        total_pokok_plus_perlindungan = harga + biaya_perlindungan
-        bunga_per_bulan = (harga * 0.015)  # Simulasi bunga flat 1.5% per bulan
-        
-        total_keseluruhan = total_pokok_plus_perlindungan + (bunga_per_bulan * tenor)
+        # Bunga 0%: Total keseluruhan murni dari Harga Barang + Biaya Perlindungan
+        total_keseluruhan = harga + biaya_perlindungan
         cicilan_per_bulan = total_keseluruhan / tenor
 
         pesan_hasil = (
             "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "📊 **HASIL SIMULASI CICILAN** 📊\n"
+            "📊 **HASIL SIMULASI CICILAN (0%)** 📊\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 **Nama:** {nama}\n"
+            f"🆔 **NIK:** {nik}\n"
             f"🏷️ **Harga Barang:** Rp {harga:,.0f}\n"
             f"📅 **Tenor Cicilan:** {tenor} Bulan\n\n"
             "--------------------------------------\n"
-            f"💳 **Cicilan per Bulan:**\n"
+            f"💳 **Cicilan per Bulan (Bunga 0%):**\n"
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
             f"💰 **Total Pembayaran:** Rp {total_keseluruhan:,.0f}\n\n"
             "ℹ️ _Catatan: Harga di atas sudah termasuk perlindungan barang-barang di rumah._\n"
@@ -117,6 +131,8 @@ def main() -> None:
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
+            GET_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name)],
+            GET_NIK: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_nik)],
             GET_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_price)],
             GET_TENOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_tenor)],
         },
@@ -128,3 +144,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    
