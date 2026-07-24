@@ -20,13 +20,13 @@ logger = logging.getLogger(__name__)
 # State untuk ConversationHandler: Harga -> DP -> Tenor
 GET_PRICE, GET_DP, GET_TENOR = range(3)
 
-# Fungsi untuk mengambil nominal perlindungan di balik layar berdasarkan harga barang
-def ambil_biaya_perlindungan(harga: float) -> float:
-    if 1_000_000 <= harga <= 10_000_000:
+# Fungsi untuk mengambil nominal perlindungan di balik layar berdasarkan SISA POKOK (setelah DP)
+def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
+    if 1_000_000 <= sisa_pokok <= 10_000_000:
         return 599_000
-    elif 10_000_000 < harga <= 30_000_000:
+    elif 10_000_000 < sisa_pokok <= 30_000_000:
         return 899_000
-    elif harga > 30_000_000:
+    elif sisa_pokok > 30_000_000:
         return 1_299_000
     return 0.0
 
@@ -43,10 +43,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
         "🏢 *HOME CREDIT INDONESIA*\n\n"
-        
-        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n\n"
-        
-        "_(Contoh: 5.000.000 atau 5000000)_"
+        "Halo Kak 👋\n"
+        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin Anda cicil:\n"
+        "_(Contoh: `6000000` atau `12500000`)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
@@ -62,8 +61,8 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan:\n\n"
-            "_(Ketik 0 jika tanpa DP, atau masukkan nominal seperti 200.000-1.000.000)_",
+            "💵 Sekarang, masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan:\n"
+            "_(Ketik `0` jika tanpa DP, atau masukkan nominal seperti `1000000`)_",
             parse_mode="Markdown"
         )
         return GET_DP
@@ -85,17 +84,18 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             return GET_DP
             
         context.user_data["dp"] = dp
+        sisa_pokok = harga - dp
         
-        # Batasan tenor berdasarkan harga barang (1 jt - 5 jt maksimal 12 bulan)
-        if 1_000_000 <= harga <= 5_000_000:
-            info_tenor = "pilihan: 3, 6, 9, 12 bulan"
+        # Batasan tenor berdasarkan sisa pokok (1 jt - 5 jt maksimal 12 bulan)
+        if 1_000_000 <= sisa_pokok <= 5_000_000:
+            info_tenor = "pilihan: 3, 6, 9, 12 bulan (Maksimal 12 bulan karena sisa pokok Rp 1 - 5 juta)"
         else:
             info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
             
         await update.message.reply_text(
-            f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
-            f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor}):\n\n"
-            "_(Contoh: 6, 12)_",
+            f"✅ DP tercatat: *Rp {dp:,.0f}* (Sisa Pokok: Rp {sisa_pokok:,.0f})\n\n"
+            f"⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor}):\n"
+            "_(Contoh: `6`, `12`)_",
             parse_mode="Markdown"
         )
         return GET_TENOR
@@ -110,24 +110,18 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         tenor = int(text)
         harga = context.user_data["harga"]
         dp = context.user_data["dp"]
+        sisa_pokok = harga - dp
         
-        # Validasi batasan tenor untuk barang 1 - 5 juta (maksimal 12 bulan)
-        if 1_000_000 <= harga <= 5_000_000 and tenor > 12:
+        # Validasi batasan tenor berdasarkan sisa pokok (maksimal 12 bulan jika sisa pokok 1 - 5 juta)
+        if 1_000_000 <= sisa_pokok <= 5_000_000 and tenor > 12:
             await update.message.reply_text(
-                "⚠️ Untuk harga barang antara Rp 1.000.000 - Rp 5.000.000, tenor maksimal adalah **12 bulan**.\n"
+                "⚠️ Berdasarkan sisa pokok setelah DP (Rp 1.000.000 - Rp 5.000.000), tenor maksimal adalah **12 bulan**.\n"
                 "Silakan masukkan ulang tenor yang valid (contoh: `3`, `6`, `9`, `12`):"
             )
             return GET_TENOR
             
-        if tenor not in [3, 6, 9, 12, 15, 18, 21, 24]:
-            # Validasi jika di luar daftar umum, tetap boleh tapi sesuaikan aturan admin
-            pass
-            
-        # Sisa pokok setelah dikurangi DP
-        sisa_pokok = harga - dp
-        
-        # Hitung komponen tambahan di balik layar
-        biaya_perlindungan = ambil_biaya_perlindungan(harga)
+        # Hitung komponen tambahan di balik layar berdasarkan sisa pokok
+        biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
         biaya_admin = ambil_biaya_admin(tenor)
         total_biaya_bulanan = 10_000 * tenor  # Biaya bulanan Rp10.000 dikali jumlah tenor
         
@@ -154,7 +148,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             f"💳 **Cicilan per Bulan:**\n"
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
             "ℹ️ **Catatan:**\n"
-            "• Bunga dan Admin tergantung NIK atau Akun masing-masing\n"
+            "• Bunga 0% tergantung NIK masing-masing\n"
             "━━━━━━━━━━━━━━━━━━━━━━"
         )
         
@@ -171,7 +165,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query.data == "ulang":
         await query.message.reply_text(
             "✨ *MULAI SIMULASI BARU* ✨\n\n"
-            "📦 Silakan masukkan **Harga Barang** baru yang ingin anda hitung:",
+            "📦 Silakan masukkan **Harga Barang** baru yang ingin Anda cicil:",
             parse_mode="Markdown"
         )
         return GET_PRICE
