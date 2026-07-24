@@ -17,8 +17,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# State untuk ConversationHandler
-GET_PRICE, GET_TENOR = range(2)
+# State untuk ConversationHandler: Harga -> DP -> Tenor
+GET_PRICE, GET_DP, GET_TENOR = range(3)
 
 # Fungsi untuk mengambil nominal perlindungan di balik layar berdasarkan harga barang
 def ambil_biaya_perlindungan(harga: float) -> float:
@@ -43,10 +43,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
         "🏢 *HOME CREDIT INDONESIA*\n\n"
-        
-        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n\n"
-        
-        "_(Contoh: 5.000.000 atau 5000000)_"
+        "Halo Kak 👋\n"
+        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin Anda cicil:\n"
+        "_(Contoh: `5000000` atau `12500000`)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
@@ -62,25 +61,69 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan (pilihan: 3, 6, 9, 12, 15, 18, 21, 24)\n\n"
+            "💵 Sekarang, masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan:\n"
+            "_(Ketik `0` jika tanpa DP, atau masukkan nominal seperti `1000000`)_",
+            parse_mode="Markdown"
+        )
+        return GET_DP
+    except ValueError:
+        await update.message.reply_text("⚠️ Format harga tidak valid. Masukkan angka saja tanpa titik/koma (contoh: `7500000`):")
+        return GET_PRICE
+
+# Menerima DP
+async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.message.text.replace(".", "").replace(",", "").strip()
+    try:
+        dp = float(text)
+        harga = context.user_data["harga"]
+        
+        if dp < 0:
+            raise ValueError
+        if dp >= harga:
+            await update.message.reply_text("⚠️ DP tidak boleh melebihi atau sama dengan Harga Barang. Masukkan nominal DP yang valid:")
+            return GET_DP
             
-            "_(Contoh: 6, 12, 24)_",
+        context.user_data["dp"] = dp
+        
+        # Batasan tenor berdasarkan harga barang (1 jt - 5 jt maksimal 12 bulan)
+        if 1_000_000 <= harga <= 5_000_000:
+            info_tenor = "pilihan: 3, 6, 9, 12 bulan (Maksimal 12 bulan untuk harga 1 - 5 juta)"
+        else:
+            info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
+            
+        await update.message.reply_text(
+            f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
+            f"⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor}):\n"
+            "_(Contoh: `6`, `12`)_",
             parse_mode="Markdown"
         )
         return GET_TENOR
     except ValueError:
-        await update.message.reply_text("⚠️ Format harga tidak valid. Masukkan angka saja tanpa titik/koma (contoh: `7500000`):")
-        return GET_PRICE
+        await update.message.reply_text("⚠️ Format DP tidak valid. Masukkan angka saja (contoh: `500000` atau `0`):")
+        return GET_DP
 
 # Menerima Tenor dan Hitung Hasil Simulasi
 async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text.strip()
     try:
         tenor = int(text)
-        if tenor <= 0:
-            raise ValueError
-        
         harga = context.user_data["harga"]
+        dp = context.user_data["dp"]
+        
+        # Validasi batasan tenor untuk barang 1 - 5 juta (maksimal 12 bulan)
+        if 1_000_000 <= harga <= 5_000_000 and tenor > 12:
+            await update.message.reply_text(
+                "⚠️ Untuk harga barang antara Rp 1.000.000 - Rp 5.000.000, tenor maksimal adalah **12 bulan**.\n"
+                "Silakan masukkan ulang tenor yang valid (contoh: `3`, `6`, `9`, `12`):"
+            )
+            return GET_TENOR
+            
+        if tenor not in [3, 6, 9, 12, 15, 18, 21, 24]:
+            # Validasi jika di luar daftar umum, tetap boleh tapi sesuaikan aturan admin
+            pass
+            
+        # Sisa pokok setelah dikurangi DP
+        sisa_pokok = harga - dp
         
         # Hitung komponen tambahan di balik layar
         biaya_perlindungan = ambil_biaya_perlindungan(harga)
@@ -88,7 +131,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         total_biaya_bulanan = 10_000 * tenor  # Biaya bulanan Rp10.000 dikali jumlah tenor
         
         # Kalkulasi total keseluruhan di balik layar
-        total_keseluruhan = harga + biaya_perlindungan + biaya_admin + total_biaya_bulanan
+        total_keseluruhan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan
         cicilan_per_bulan = total_keseluruhan / tenor
 
         # Membuat tombol interaktif di bawah pesan
@@ -104,12 +147,13 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             "🏢 **Home Credit Indonesia**\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🏷️ **Harga Barang:** Rp {harga:,.0f}\n"
+            f"💵 **Uang Muka (DP):** Rp {dp:,.0f}\n"
             f"📅 **Tenor Cicilan:** {tenor} Bulan\n\n"
             "--------------------------------------\n"
             f"💳 **Cicilan per Bulan:**\n"
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
             "ℹ️ **Catatan:**\n"
-            "• Bunga dan Admin tergantung NIK atau Akun masing-masing\n"
+            "• Bunga 0% tergantung NIK masing-masing\n"
             "━━━━━━━━━━━━━━━━━━━━━━"
         )
         
@@ -126,7 +170,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query.data == "ulang":
         await query.message.reply_text(
             "✨ *MULAI SIMULASI BARU* ✨\n\n"
-            "📦 Silakan masukkan **Harga Barang** baru yang ingin anda hitung:",
+            "📦 Silakan masukkan **Harga Barang** baru yang ingin Anda cicil:",
             parse_mode="Markdown"
         )
         return GET_PRICE
@@ -148,6 +192,7 @@ def main() -> None:
         entry_points=[CommandHandler("start", start), CallbackQueryHandler(button_callback, pattern="ulang")],
         states={
             GET_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_price)],
+            GET_DP: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_dp)],
             GET_TENOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_tenor)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
