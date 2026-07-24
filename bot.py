@@ -38,13 +38,20 @@ def ambil_biaya_admin(tenor: int) -> float:
         return 299_000
     return 0.0
 
+# Fungsi untuk mengambil persentase bunga berdasarkan sisa pokok
+def ambil_persen_bunga(sisa_pokok: float) -> float:
+    if 1_000_000 <= sisa_pokok <= 5_000_000:
+        return 0.0225  # Bunga 2.25% untuk sisa pokok 1-5 juta
+    return 0.00         # Bunga 0% untuk kategori lainnya (atau sesuai aturan sebelumnya)
+
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
         "🏢 *HOME CREDIT INDONESIA*\n\n"
-        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n\n"
-        "_(Contoh: 5.000.000 atau 5000000)_"
+        "Halo Kak 👋\n"
+        "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin Anda cicil:\n"
+        "_(Contoh: `4000000` atau `12500000`)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
@@ -60,8 +67,8 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan:\n\n"
-            "_(Ketik 0 jika tanpa DP, atau masukkan nominal seperti 200.000-1.000.000)_",
+            "💵 Sekarang, masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan:\n"
+            "_(Ketik `0` jika tanpa DP, atau masukkan nominal seperti `1000000`)_",
             parse_mode="Markdown"
         )
         return GET_DP
@@ -87,14 +94,14 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         
         # Batasan tenor berdasarkan sisa pokok (1 jt - 5 jt maksimal 12 bulan)
         if 1_000_000 <= sisa_pokok <= 5_000_000:
-            info_tenor = "pilihan: 3, 6, 9, 12 bulan"
+            info_tenor = "pilihan: 3, 6, 9, 12 bulan (Maksimal 12 bulan karena sisa pokok Rp 1 - 5 juta)"
         else:
             info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
             
         await update.message.reply_text(
-            f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
-            f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
-            "_(Contoh: 6 , 12)_",
+            f"✅ DP tercatat: *Rp {dp:,.0f}* (Sisa Pokok: Rp {sisa_pokok:,.0f})\n\n"
+            f"⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor}):\n"
+            "_(Contoh: `6`, `12`)_",
             parse_mode="Markdown"
         )
         return GET_TENOR
@@ -119,13 +126,17 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             )
             return GET_TENOR
             
-        # Hitung komponen tambahan di balik layar berdasarkan sisa pokok
+        # Hitung komponen tambahan di balik layar
         biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
         biaya_admin = ambil_biaya_admin(tenor)
         total_biaya_bulanan = 10_000 * tenor  # Biaya bulanan Rp10.000 dikali jumlah tenor
         
+        # Hitung bunga berdasarkan sisa pokok (2.25% per bulan jika sisa pokok 1-5 juta)
+        persen_bunga = ambil_persen_bunga(sisa_pokok)
+        total_bunga = (sisa_pokok * persen_bunga) * tenor
+        
         # Kalkulasi total keseluruhan di balik layar
-        total_keseluruhan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan
+        total_keseluruhan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan + total_bunga
         cicilan_per_bulan = total_keseluruhan / tenor
 
         # Membuat tombol interaktif di bawah pesan
@@ -147,7 +158,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             f"💳 **Cicilan per Bulan:**\n"
             f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
             "ℹ️ **Catatan:**\n"
-            "• Bunga dan Admin tergantung NIK dan Akun masing-masing\n"
+            "• Bunga 0% tergantung NIK masing-masing\n"
             "━━━━━━━━━━━━━━━━━━━━━━"
         )
         
@@ -164,7 +175,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query.data == "ulang":
         await query.message.reply_text(
             "✨ *MULAI SIMULASI BARU* ✨\n\n"
-            "📦 Silakan masukkan **Harga Barang** baru yang ingin anda hitung:",
+            "📦 Silakan masukkan **Harga Barang** baru yang ingin Anda cicil:",
             parse_mode="Markdown"
         )
         return GET_PRICE
