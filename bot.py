@@ -20,11 +20,9 @@ logger = logging.getLogger(__name__)
 # State untuk ConversationHandler: Harga -> DP -> Tenor
 GET_PRICE, GET_DP, GET_TENOR = range(3)
 
-# Daftar pilihan tenor yang diizinkan
 DAFTAR_TENOR_UMUM = [3, 6, 9, 12, 15, 18, 21, 24]
 DAFTAR_TENOR_PENDEK = [3, 6, 9, 12]
 
-# Fungsi untuk mengambil nominal perlindungan di balik layar berdasarkan SISA POKOK (setelah DP)
 def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
     if 1_000_000 <= sisa_pokok <= 10_000_000:
         return 599_000
@@ -34,10 +32,8 @@ def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
         return 1_299_000
     return 0.0
 
-# Fungsi untuk mengambil biaya admin sesuai kelipatan harga di aplikasi (Rp 30.000 per 1 juta)
 def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
     if 1_000_000 <= sisa_pokok <= 5_000_000:
-        # Menghitung proporsi kelipatan Rp 30.000 per 1 juta rupiah dari sisa pokok
         return (sisa_pokok / 1_000_000) * 30_000
     else:
         if tenor in [3, 6, 9, 12]:
@@ -45,12 +41,6 @@ def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
         elif tenor in [15, 18, 21, 24]:
             return 299_000
     return 0.0
-
-# Fungsi untuk mengambil persentase bunga berdasarkan sisa pokok (2,250% untuk 1-5 juta)
-def ambil_persen_bunga(sisa_pokok: float) -> float:
-    if 1_000_000 <= sisa_pokok <= 5_000_000:
-        return 0.02250  
-    return 0.00         
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -74,7 +64,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
+            "💵 Sekarang, masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
             "_(Ketik 0 jika tanpa DP)_",
             parse_mode="Markdown"
         )
@@ -106,7 +96,7 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
-            f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
+            f"⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
             "_(Contoh: 12)_",
             parse_mode="Markdown"
         )
@@ -136,21 +126,22 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             )
             return GET_TENOR
             
-        # Hitung komponen pembiayaan persis seperti di aplikasi
         biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
         biaya_admin = ambil_biaya_admin(sisa_pokok, tenor)
         total_biaya_bulanan = 10_000 * tenor  
         
         total_pembiayaan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan
         
-        # Perhitungan bunga efektif/anuitas yang mendekati aplikasi (2,250%)
-        persen_bunga = ambil_persen_bunga(sisa_pokok)
-        total_bunga = (total_pembiayaan * persen_bunga) * tenor
-        
-        total_keseluruhan = total_pembiayaan + total_bunga
-        cicilan_per_bulan = total_keseluruhan / tenor
+        # Penyesuaian persentase agar pas dengan hasil aplikasi (2.250%)
+        if 1_000_000 <= sisa_pokok <= 5_000_000:
+            # Menggunakan basis perhitungan flat spesifik aplikasi
+            total_bunga = (sisa_pokok * 0.0225) * tenor
+            total_keseluruhan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan + total_bunga
+            cicilan_per_bulan = total_keseluruhan / tenor
+        else:
+            total_keseluruhan = total_pembiayaan
+            cicilan_per_bulan = total_keseluruhan / tenor
 
-        # Membuat tombol interaktif di bawah pesan
         keyboard = [
             [InlineKeyboardButton("💬 Hubungi WhatsApp Admin", url="https://wa.me/6285935491278")],
             [InlineKeyboardButton("🔄 Hitung Simulasi Baru", callback_data="ulang")]
@@ -179,7 +170,6 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text("⚠️ **Tenor tidak ada di pilihan!** Masukkan angka bulat untuk jumlah bulan yang valid:")
         return GET_TENOR
 
-# Handler tombol inline "Hitung Simulasi Baru"
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -191,7 +181,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         return GET_PRICE
 
-# /cancel command
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("❌ Simulasi dibatalkan. Ketik /start untuk memulai kembali.")
     return ConversationHandler.END
