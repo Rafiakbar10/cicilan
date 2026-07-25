@@ -34,38 +34,31 @@ def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
         return 1_299_000
     return 0.0
 
-# Fungsi untuk mengambil biaya admin berdasarkan kelipatan sisa pokok (khusus kategori 1-5 juta)
+# Fungsi untuk mengambil biaya admin sesuai kelipatan harga di aplikasi (Rp 30.000 per 1 juta)
 def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
     if 1_000_000 <= sisa_pokok <= 5_000_000:
-        # Menghitung kelipatan per 1 juta (1jt: 30rb, 2jt: 60rb, 3jt: 90rb, 4jt: 120rb, 5jt: 150rb)
-        multiplier = int(sisa_pokok // 1_000_000)
-        if multiplier < 1:
-            multiplier = 1
-        elif multiplier > 5:
-            multiplier = 5
-        return multiplier * 30_000
+        # Menghitung proporsi kelipatan Rp 30.000 per 1 juta rupiah dari sisa pokok
+        return (sisa_pokok / 1_000_000) * 30_000
     else:
-        # Biaya admin standar berdasarkan tenor untuk kategori di atas 5 juta
         if tenor in [3, 6, 9, 12]:
             return 199_000
         elif tenor in [15, 18, 21, 24]:
             return 299_000
     return 0.0
 
-# Fungsi untuk mengambil persentase bunga berdasarkan sisa pokok (diset ke 2,250% untuk 1-5 juta)
+# Fungsi untuk mengambil persentase bunga berdasarkan sisa pokok (2,250% untuk 1-5 juta)
 def ambil_persen_bunga(sisa_pokok: float) -> float:
     if 1_000_000 <= sisa_pokok <= 5_000_000:
-        return 0.02250  # Bunga 2,250% untuk sisa pokok 1-5 juta
-    return 0.00         # Bunga 0% untuk kategori lainnya
+        return 0.02250  
+    return 0.00         
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pesan_mulai = (
         "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
         "🏢 *HOME CREDIT INDONESIA*\n\n"
-        
         "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n\n"
-        "_(Contoh: 5.000.000 atau 5000000)_"
+        "_(Contoh: 3.500.000 atau 3500000)_"
     )
     await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
@@ -82,12 +75,12 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
             "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
-            "_(Ketik 0 jika tanpa DP, atau masukkan nominal seperti 10.000-1.000.000)_",
+            "_(Ketik 0 jika tanpa DP)_",
             parse_mode="Markdown"
         )
         return GET_DP
     except ValueError:
-        await update.message.reply_text("⚠️ Format harga tidak valid. Masukkan angka saja tanpa titik/koma (contoh: `7500000`):")
+        await update.message.reply_text("⚠️ Format harga tidak valid. Masukkan angka saja tanpa titik/koma (contoh: `3500000`):")
         return GET_PRICE
 
 # Menerima DP
@@ -106,7 +99,6 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         context.user_data["dp"] = dp
         sisa_pokok = harga - dp
         
-        # Batasan tenor berdasarkan sisa pokok (1 jt - 5 jt maksimal 12 bulan)
         if 1_000_000 <= sisa_pokok <= 5_000_000:
             info_tenor = "pilihan: 3, 6, 9, 12 bulan"
         else:
@@ -115,7 +107,7 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
             f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
-            "_(Contoh: 6 , 12)_",
+            "_(Contoh: 12)_",
             parse_mode="Markdown"
         )
         return GET_TENOR
@@ -132,7 +124,6 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         dp = context.user_data["dp"]
         sisa_pokok = harga - dp
         
-        # Validasi apakah tenor ada di dalam pilihan yang diizinkan
         if 1_000_000 <= sisa_pokok <= 5_000_000:
             pilihan_valid = DAFTAR_TENOR_PENDEK
         else:
@@ -145,17 +136,18 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             )
             return GET_TENOR
             
-        # Hitung komponen tambahan di balik layar
+        # Hitung komponen pembiayaan persis seperti di aplikasi
         biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
         biaya_admin = ambil_biaya_admin(sisa_pokok, tenor)
-        total_biaya_bulanan = 10_000 * tenor  # Biaya bulanan Rp10.000 dikali jumlah tenor
+        total_biaya_bulanan = 10_000 * tenor  
         
-        # Hitung bunga berdasarkan sisa pokok (2,250% per bulan jika sisa pokok 1-5 juta)
+        total_pembiayaan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan
+        
+        # Perhitungan bunga efektif/anuitas yang mendekati aplikasi (2,250%)
         persen_bunga = ambil_persen_bunga(sisa_pokok)
-        total_bunga = (sisa_pokok * persen_bunga) * tenor
+        total_bunga = (total_pembiayaan * persen_bunga) * tenor
         
-        # Kalkulasi total keseluruhan di balik layar
-        total_keseluruhan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan + total_bunga
+        total_keseluruhan = total_pembiayaan + total_bunga
         cicilan_per_bulan = total_keseluruhan / tenor
 
         # Membuat tombol interaktif di bawah pesan
