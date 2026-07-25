@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # State untuk ConversationHandler: Harga -> DP -> Tenor
 GET_PRICE, GET_DP, GET_TENOR = range(3)
 
-# Daftar pilihan tenor yang diizinkan secara umum
+# Daftar pilihan tenor yang diizinkan
 DAFTAR_TENOR_UMUM = [3, 6, 9, 12, 15, 18, 21, 24]
 DAFTAR_TENOR_PENDEK = [3, 6, 9, 12]
 
@@ -34,15 +34,25 @@ def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
         return 1_299_000
     return 0.0
 
-# Fungsi untuk mengambil biaya admin di balik layar berdasarkan tenor
-def ambil_biaya_admin(tenor: int) -> float:
-    if tenor in [3, 6, 9, 12]:
-        return 199_000
-    elif tenor in [15, 18, 21, 24]:
-        return 299_000
+# Fungsi untuk mengambil biaya admin berdasarkan kelipatan sisa pokok (khusus kategori 1-5 juta)
+def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
+    if 1_000_000 <= sisa_pokok <= 5_000_000:
+        # Menghitung kelipatan per 1 juta (1jt: 30rb, 2jt: 60rb, 3jt: 90rb, 4jt: 120rb, 5jt: 150rb)
+        multiplier = int(sisa_pokok // 1_000_000)
+        if multiplier < 1:
+            multiplier = 1
+        elif multiplier > 5:
+            multiplier = 5
+        return multiplier * 30_000
+    else:
+        # Biaya admin standar berdasarkan tenor untuk kategori di atas 5 juta
+        if tenor in [3, 6, 9, 12]:
+            return 199_000
+        elif tenor in [15, 18, 21, 24]:
+            return 299_000
     return 0.0
 
-# Fungsi untuk mengambil persentase bunga berdasarkan sisa pokok (diset ke 2,250% atau 0.0225)
+# Fungsi untuk mengambil persentase bunga berdasarkan sisa pokok (diset ke 2,250% untuk 1-5 juta)
 def ambil_persen_bunga(sisa_pokok: float) -> float:
     if 1_000_000 <= sisa_pokok <= 5_000_000:
         return 0.02250  # Bunga 2,250% untuk sisa pokok 1-5 juta
@@ -130,14 +140,14 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
         if tenor not in pilihan_valid:
             await update.message.reply_text(
-                "⚠️ Tenor tidak ada di pilihan!\n"
+                "⚠️ **Tenor tidak ada di pilihan!**\n"
                 f"Silakan masukkan tenor yang tersedia untuk kategori ini: ({', '.join(map(str, pilihan_valid))}) bulan."
             )
             return GET_TENOR
             
         # Hitung komponen tambahan di balik layar
         biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
-        biaya_admin = ambil_biaya_admin(tenor)
+        biaya_admin = ambil_biaya_admin(sisa_pokok, tenor)
         total_biaya_bulanan = 10_000 * tenor  # Biaya bulanan Rp10.000 dikali jumlah tenor
         
         # Hitung bunga berdasarkan sisa pokok (2,250% per bulan jika sisa pokok 1-5 juta)
