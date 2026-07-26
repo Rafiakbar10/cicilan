@@ -12,6 +12,7 @@ from telegram.ext import (
     ContextTypes,
 )
 from datetime import datetime
+import zoneinfo
 
 # Konfigurasi Logging
 logging.basicConfig(
@@ -44,9 +45,12 @@ def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
             return 299_000
     return 0.0
 
-# Fungsi untuk mendeteksi waktu sapaan
+# Fungsi untuk mendeteksi waktu sapaan khusus terkunci ke Zona Waktu Indonesia (WIB)
 def get_salam_waktu() -> str:
-    jam = datetime.now().hour
+    # Menggunakan zona waktu resmi Asia/Jakarta (WIB)
+    zona_waktu_wib = zoneinfo.ZoneInfo("Asia/Jakarta")
+    jam = datetime.now(zona_waktu_wib).hour
+    
     if 4 <= jam < 11:
         return "SELAMAT PAGI 🌅"
     elif 11 <= jam < 15:
@@ -173,7 +177,6 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        # Tampilan pesan hasil yang lebih rapi, elegan, dan terstruktur
         pesan_hasil = (
             "━━━━━━━━━━━━━━━━━━━━━━\n"
             "📊  *HASIL SIMULASI CICILAN*  📊\n"
