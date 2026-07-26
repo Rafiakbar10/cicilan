@@ -7,8 +7,8 @@ from telegram.ext import (
     MessageHandler,
     filters,
     ConversationHandler,
-    ContextTypes,
     CallbackQueryHandler,
+    ContextTypes,
 )
 
 # Konfigurasi Logging
@@ -50,7 +50,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n\n"
         "_(Contoh: 3.500.000 atau 3500000)_"
     )
-    await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
+    if update.message:
+        await update.message.reply_text(pesan_mulai, parse_mode="Markdown")
     return GET_PRICE
 
 # Menerima Harga
@@ -130,17 +131,13 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         biaya_admin = ambil_biaya_admin(sisa_pokok, tenor)
         total_biaya_bulanan = 10_000 * tenor  
         
-        total_pembiayaan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan
-        
-        # Penyesuaian persentase agar pas dengan hasil aplikasi (2.250%)
         if 1_000_000 <= sisa_pokok <= 5_000_000:
-            # Menggunakan basis perhitungan flat spesifik aplikasi
             total_bunga = (sisa_pokok * 0.0225) * tenor
             total_keseluruhan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan + total_bunga
             cicilan_per_bulan = total_keseluruhan / tenor
         else:
-            total_keseluruhan = total_pembiayaan
-            cicilan_per_bulan = total_keseluruhan / tenor
+            total_pembiayaan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan
+            cicilan_per_bulan = total_pembiayaan / tenor
 
         keyboard = [
             [InlineKeyboardButton("💬 Hubungi WhatsApp Admin", url="https://wa.me/6285935491278")],
@@ -180,6 +177,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             parse_mode="Markdown"
         )
         return GET_PRICE
+    return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("❌ Simulasi dibatalkan. Ketik /start untuk memulai kembali.")
@@ -194,7 +192,7 @@ def main() -> None:
     application = Application.builder().token(TOKEN).build()
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start), CallbackQueryHandler(button_callback, pattern="ulang")],
+        entry_points=[CommandHandler("start", start)],
         states={
             GET_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_price)],
             GET_DP: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_dp)],
@@ -204,6 +202,8 @@ def main() -> None:
     )
 
     application.add_handler(conv_handler)
+    application.add_handler(CallbackQueryHandler(button_callback, pattern="ulang"))
+
     application.run_polling()
 
 if __name__ == "__main__":
