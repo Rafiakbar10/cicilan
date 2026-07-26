@@ -123,7 +123,7 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
             f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
-            "_(Contoh: 12 )_",
+            "_(Contoh: 12)_",
             parse_mode="Markdown"
         )
         return GET_TENOR
@@ -159,7 +159,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         # Logika khusus kode 14: Harga dibagi 12 bulan (Free 2x / murni tanpa bunga/admin)
         if tenor_input == 14:
             tampilan_tenor = "14 Bulan (Free 2x)"
-            cicilan_per_bulan = harga / 12  # Sesuai permintaan: harga / 12
+            cicilan_per_bulan = harga / 12  
         else:
             tampilan_tenor = f"{tenor_input} Bulan"
             biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
@@ -207,6 +207,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text("⚠️ Tenor tidak ada di pilihan! Masukkan angka bulat untuk jumlah bulan yang valid:")
         return GET_TENOR
 
+# Menangani tombol "Hitung Simulasi Baru" dan mengembalikan state ke GET_PRICE
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -234,6 +235,7 @@ def main() -> None:
 
     application = Application.builder().token(TOKEN).build()
 
+    # Menggunakan ConversationHandler tunggal yang mencakup start, tahapan hitung, hingga tombol ulang
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
@@ -241,12 +243,13 @@ def main() -> None:
             GET_DP: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_dp)],
             GET_TENOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_tenor)],
         },
-        fallbacks=[CommandHandler("cancel", cancel)],
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(button_callback, pattern="ulang")
+        ],
     )
 
     application.add_handler(conv_handler)
-    application.add_handler(CallbackQueryHandler(button_callback, pattern="ulang"))
-
     application.run_polling()
 
 if __name__ == "__main__":
