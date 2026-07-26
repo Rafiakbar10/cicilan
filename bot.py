@@ -46,7 +46,6 @@ def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
 
 # Fungsi untuk mendeteksi waktu sapaan
 def get_salam_waktu() -> str:
-    # Mengambil jam server (WIB)
     jam = datetime.now().hour
     if 4 <= jam < 11:
         return "Selamat Pagi 🌅"
@@ -83,7 +82,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "💵 Sekarang, masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
+            "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
             "_(Ketik 0 jika tanpa DP)_",
             parse_mode="Markdown"
         )
@@ -118,8 +117,8 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
             
         await update.message.reply_text(
-            f"✅ DP tercatat: *Rp {dp:,.0f}* (Sisa Pokok: Rp {sisa_pokok:,.0f})\n\n"
-            f"⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
+            f"✅ DP tercatat: *Rp {dp:,.0f}*)\n\n"
+            f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
             "_(Contoh: 12)_",
             parse_mode="Markdown"
         )
@@ -144,14 +143,14 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
         if tenor not in pilihan_valid:
             await update.message.reply_text(
-                "⚠️ **Tenor tidak ada di pilihan!**\n"
+                "⚠️ Tenor tidak ada di pilihan!\n"
                 f"Silakan masukkan tenor yang tersedia untuk kategori ini: ({', '.join(map(str, pilihan_valid))}) bulan."
             )
             return GET_TENOR
             
         # Efek loading / pesan proses menghitung
         msg_loading = await update.message.reply_text("🔄 _Sedang menghitung rincian simulasi terbaik untuk Anda..._")
-        await asyncio.sleep(1.2) # Jeda waktu 1.2 detik
+        await asyncio.sleep(1.2)
         
         biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
         biaya_admin = ambil_biaya_admin(sisa_pokok, tenor)
@@ -190,7 +189,6 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             "━━━━━━━━━━━━━━━━━━━━━━"
         )
         
-        # Hapus pesan loading, lalu kirim hasil simulasi
         await msg_loading.delete()
         await update.message.reply_text(pesan_hasil, parse_mode="Markdown", reply_markup=reply_markup)
         return ConversationHandler.END
@@ -202,11 +200,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     query = update.callback_query
     await query.answer()
     if query.data == "ulang":
-        await query.message.reply_text(
-            "✨ *MULAI SIMULASI BARU* ✨\n\n"
-            "📦 Silakan masukkan **Harga Barang** baru yang ingin anda hitung:",
-            parse_mode="Markdown"
+        salam = get_salam_waktu()
+        pesan_ulang = (
+            f"✨ *{salam} & MULAI SIMULASI BARU* ✨\n"
+            "🏢 *HOME CREDIT INDONESIA*\n\n"
+            "📦 Silakan masukkan **Harga Barang** baru yang ingin anda hitung:\n\n"
+            "_(Contoh: 3.500.000 atau 3500000)_"
         )
+        await query.message.reply_text(pesan_ulang, parse_mode="Markdown")
         return GET_PRICE
     return ConversationHandler.END
 
