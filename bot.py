@@ -125,7 +125,7 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
             f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
-            "_(Contoh: 12 atau 14)_",
+            "_(Contoh: 12 )_",
             parse_mode="Markdown"
         )
         return GET_TENOR
