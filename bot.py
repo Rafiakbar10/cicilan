@@ -12,7 +12,6 @@ from telegram.ext import (
     ContextTypes,
 )
 from datetime import datetime
-import zoneinfo
 
 # Konfigurasi Logging
 logging.basicConfig(
@@ -48,10 +47,9 @@ def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
             return 299_000
     return 0.0
 
-# Fungsi untuk mendeteksi waktu sapaan khusus terkunci ke Zona Waktu Indonesia (WIB)
+# Fungsi untuk mendeteksi waktu sapaan menggunakan waktu server lokal
 def get_salam_waktu() -> str:
-    zona_waktu_wib = zoneinfo.ZoneInfo("Asia/Jakarta")
-    jam = datetime.now(zona_waktu_wib).hour
+    jam = datetime.now().hour
     
     if 4 <= jam < 11:
         return "SELAMAT PAGI 🌅"
@@ -125,7 +123,7 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
             f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
-            "_(Contoh: 12 )_",
+            "_(Contoh: 12)_",
             parse_mode="Markdown"
         )
         return GET_TENOR
@@ -158,14 +156,10 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         msg_loading = await update.message.reply_text("🔄 _Sedang menghitung rincian simulasi terbaik untuk Anda..._")
         await asyncio.sleep(1.2)
         
-        # Logika khusus untuk kode rahasia 14 (free/0% dan hitungan dasar 12 bulan)
+        # Logika khusus untuk kode rahasia 14 (langsung harga / 14 murni tanpa biaya tambahan)
         if tenor_input == 14:
             tampilan_tenor = "14 Bulan (Free 2x)"
-            biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
-            biaya_admin = 0.0
-            total_biaya_bulanan = 0.0
-            total_keseluruhan = sisa_pokok + biaya_perlindungan  # Tanpa bunga, admin, dan biaya bulanan
-            cicilan_per_bulan = total_keseluruhan / 12  # Hitungan dibagi 12 bulan di balik layar
+            cicilan_per_bulan = harga / 14
         else:
             tampilan_tenor = f"{tenor_input} Bulan"
             biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
@@ -210,7 +204,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text(pesan_hasil, parse_mode="Markdown", reply_markup=reply_markup)
         return ConversationHandler.END
     except ValueError:
-        await update.message.reply_text("⚠️ **Tenor tidak ada di pilihan!** Masukkan angka bulat untuk jumlah bulan yang valid:")
+        await update.message.reply_text("⚠️ Tenor tidak ada di pilihan! Masukkan angka bulat untuk jumlah bulan yang valid:")
         return GET_TENOR
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
