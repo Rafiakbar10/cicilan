@@ -48,13 +48,13 @@ def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
 def get_salam_waktu() -> str:
     jam = datetime.now().hour
     if 4 <= jam < 11:
-        return "Selamat Pagi 🌅"
+        return "SELAMAT PAGI 🌅"
     elif 11 <= jam < 15:
-        return "Selamat Siang ☀️"
+        return "SELAMAT SIANG ☀️"
     elif 15 <= jam < 18:
-        return "Selamat Sore 🌇"
+        return "SELAMAT SORE 🌇"
     else:
-        return "Selamat Malam 🌙"
+        return "SELAMAT MALAM 🌙"
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -117,7 +117,7 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
             
         await update.message.reply_text(
-            f"✅ DP tercatat: *Rp {dp:,.0f}*)\n\n"
+            f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
             f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
             "_(Contoh: 12)_",
             parse_mode="Markdown"
