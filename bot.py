@@ -60,7 +60,7 @@ def get_salam_waktu() -> str:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     salam = get_salam_waktu()
     pesan_mulai = (
-        f"✨ *{salam} & SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
+        f"✨ *{salam}* ✨\n"
         "🏢 *HOME CREDIT INDONESIA*\n\n"
         "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n\n"
         "_(Contoh: 3.500.000 atau 3500000)_"
@@ -143,7 +143,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
         if tenor not in pilihan_valid:
             await update.message.reply_text(
-                "⚠️ Tenor tidak ada di pilihan!\n"
+                "⚠️ **Tenor tidak ada di pilihan!**\n"
                 f"Silakan masukkan tenor yang tersedia untuk kategori ini: ({', '.join(map(str, pilihan_valid))}) bulan."
             )
             return GET_TENOR
@@ -173,19 +173,21 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
+        # Tampilan pesan hasil yang lebih rapi, elegan, dan terstruktur
         pesan_hasil = (
             "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "📊 **HASIL SIMULASI CICILAN** 📊\n"
-            "🏢 **Home Credit Indonesia**\n"
+            "📊  *HASIL SIMULASI CICILAN*  📊\n"
+            "🏢  *Home Credit Indonesia*\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🏷️ **Harga Barang:** Rp {harga:,.0f}\n"
-            f"💵 **Uang Muka (DP):** Rp {dp:,.0f}\n"
-            f"📅 **Tenor Cicilan:** {tenor} Bulan\n\n"
-            "--------------------------------------\n"
-            f"💳 **Cicilan per Bulan:**\n"
-            f"👉 *Rp {cicilan_per_bulan:,.0f} / bln*\n\n"
-            "ℹ️ **Catatan:**\n"
-            "• Bunga dan Admin tergantung NIK dan Akun masing-masing\n"
+            f"🏷️  *Harga Barang*  : Rp {harga:,.0f}\n"
+            f"💵  *Uang Muka (DP)* : Rp {dp:,.0f}\n"
+            f"📅  *Tenor Cicilan*  : {tenor} Bulan\n\n"
+            "──────────────────────\n"
+            f"💳  *ESTIMASI CICILAN* :\n"
+            f"👉  *Rp {cicilan_per_bulan:,.0f} / bln*\n"
+            "──────────────────────\n\n"
+            "ℹ️  *Catatan Penting:*\n"
+            "• Besaran cicilan, bunga, & admin dapat bervariasi tergantung NIK dan profil akun masing-masing.\n"
             "━━━━━━━━━━━━━━━━━━━━━━"
         )
         
@@ -202,7 +204,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query.data == "ulang":
         salam = get_salam_waktu()
         pesan_ulang = (
-            f"✨ *{salam} & MULAI SIMULASI BARU* ✨\n"
+            f"✨ *{salam}* ✨\n"
             "🏢 *HOME CREDIT INDONESIA*\n\n"
             "📦 Silakan masukkan **Harga Barang** baru yang ingin anda hitung:\n\n"
             "_(Contoh: 3.500.000 atau 3500000)_"
