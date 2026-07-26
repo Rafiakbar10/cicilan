@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 # State untuk ConversationHandler: Harga -> DP -> Tenor
 GET_PRICE, GET_DP, GET_TENOR = range(3)
 
-DAFTAR_TENOR_UMUM = [3, 6, 9, 12, 15, 18, 21, 24]
-DAFTAR_TENOR_PENDEK = [3, 6, 9, 12]
+DAFTAR_TENOR_UMUM = [3, 6, 9, 12, 14, 15, 18, 21, 24]
+DAFTAR_TENOR_PENDEK = [3, 6, 9, 12, 14]
 
 def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
     if 500_000 <= sisa_pokok <= 10_000_000:
@@ -36,6 +36,9 @@ def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
     return 0.0
 
 def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
+    if tenor == 14:
+        return 0.0 # Bebas biaya admin untuk kode rahasia 14
+        
     if 500_000 <= sisa_pokok <= 5_000_000:
         return (sisa_pokok / 1_000_000) * 30_000
     else:
@@ -47,7 +50,6 @@ def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
 
 # Fungsi untuk mendeteksi waktu sapaan khusus terkunci ke Zona Waktu Indonesia (WIB)
 def get_salam_waktu() -> str:
-    # Menggunakan zona waktu resmi Asia/Jakarta (WIB)
     zona_waktu_wib = zoneinfo.ZoneInfo("Asia/Jakarta")
     jam = datetime.now(zona_waktu_wib).hour
     
@@ -116,14 +118,14 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             return GET_DP
         
         if 500_000 <= sisa_pokok <= 5_000_000:
-            info_tenor = "pilihan: 3, 6, 9, 12 bulan"
+            info_tenor = "pilihan: 3, 6, 9, 12, 14 bulan"
         else:
-            info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
+            info_tenor = "pilihan: 3, 6, 9, 12, 14, 15, 18, 21, 24 bulan"
             
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
             f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
-            "_(Contoh: 12)_",
+            "_(Contoh: 12 atau 14)_",
             parse_mode="Markdown"
         )
         return GET_TENOR
@@ -135,7 +137,7 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text.strip()
     try:
-        tenor = int(text)
+        tenor_input = int(text)
         harga = context.user_data["harga"]
         dp = context.user_data["dp"]
         sisa_pokok = harga - dp
@@ -145,7 +147,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         else:
             pilihan_valid = DAFTAR_TENOR_UMUM
 
-        if tenor not in pilihan_valid:
+        if tenor_input not in pilihan_valid:
             await update.message.reply_text(
                 "⚠️ **Tenor tidak ada di pilihan!**\n"
                 f"Silakan masukkan tenor yang tersedia untuk kategori ini: ({', '.join(map(str, pilihan_valid))}) bulan."
@@ -156,19 +158,29 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         msg_loading = await update.message.reply_text("🔄 _Sedang menghitung rincian simulasi terbaik untuk Anda..._")
         await asyncio.sleep(1.2)
         
-        biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
-        biaya_admin = ambil_biaya_admin(sisa_pokok, tenor)
-        total_biaya_bulanan = 10_000 * tenor  
-        
-        if 500_000 <= sisa_pokok <= 5_000_000:
-            total_bunga = (sisa_pokok * 0.0225) * tenor
-            total_keseluruhan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan + total_bunga
-            cicilan_per_bulan = total_keseluruhan / tenor
+        # Logika khusus untuk kode rahasia 14 (free/0% dan hitungan dasar 12 bulan)
+        if tenor_input == 14:
+            tampilan_tenor = "14 Bulan (Free 2x)"
+            biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
+            biaya_admin = 0.0
+            total_biaya_bulanan = 0.0
+            total_keseluruhan = sisa_pokok + biaya_perlindungan  # Tanpa bunga, admin, dan biaya bulanan
+            cicilan_per_bulan = total_keseluruhan / 12  # Hitungan dibagi 12 bulan di balik layar
         else:
-            total_pembiayaan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan
-            cicilan_per_bulan = total_pembiayaan / tenor
+            tampilan_tenor = f"{tenor_input} Bulan"
+            biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
+            biaya_admin = ambil_biaya_admin(sisa_pokok, tenor_input)
+            total_biaya_bulanan = 10_000 * tenor_input  
+            
+            if 500_000 <= sisa_pokok <= 5_000_000:
+                total_bunga = (sisa_pokok * 0.0225) * tenor_input
+                total_keseluruhan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan + total_bunga
+                cicilan_per_bulan = total_keseluruhan / tenor_input
+            else:
+                total_pembiayaan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan
+                cicilan_per_bulan = total_pembiayaan / tenor_input
 
-        pesan_wa = f"Halo Admin, saya ingin mengajukan cicilan Home Credit dengan rincian:\n- Harga Barang: Rp {harga:,.0f}\n- DP: Rp {dp:,.0f}\n- Tenor: {tenor} Bulan\n- Cicilan: Rp {cicilan_per_bulan:,.0f} / bln"
+        pesan_wa = f"Halo Admin, saya ingin mengajukan cicilan Home Credit dengan rincian:\n- Harga Barang: Rp {harga:,.0f}\n- DP: Rp {dp:,.0f}\n- Tenor: {tampilan_tenor}\n- Cicilan: Rp {cicilan_per_bulan:,.0f} / bln"
         url_wa = f"https://wa.me/6285935491278?text={pesan_wa.replace(' ', '%20').replace(chr(10), '%0A')}"
 
         keyboard = [
@@ -184,7 +196,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             "━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🏷️  *Harga Barang*  : Rp {harga:,.0f}\n"
             f"💵  *Uang Muka (DP)* : Rp {dp:,.0f}\n"
-            f"📅  *Tenor Cicilan*  : {tenor} Bulan\n\n"
+            f"📅  *Tenor Cicilan*  : {tampilan_tenor}\n\n"
             "──────────────────────\n"
             f"💳  *ESTIMASI CICILAN* :\n"
             f"👉  *Rp {cicilan_per_bulan:,.0f} / bln*\n"
