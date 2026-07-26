@@ -116,9 +116,9 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             return GET_DP
         
         if 500_000 <= sisa_pokok <= 5_000_000:
-            info_tenor = "pilihan: 3, 6, 9, 12 bulan"
+            info_tenor = "pilihan: 3, 6, 9, 12, 14 bulan"
         else:
-            info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
+            info_tenor = "pilihan: 3, 6, 9, 12, 14, 15, 18, 21, 24 bulan"
             
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
@@ -207,7 +207,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text("⚠️ Tenor tidak ada di pilihan! Masukkan angka bulat untuk jumlah bulan yang valid:")
         return GET_TENOR
 
-# Menangani tombol "Hitung Simulasi Baru" dan mengembalikan state ke GET_PRICE
+# Menangani tombol "Hitung Simulasi Baru"
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -235,9 +235,12 @@ def main() -> None:
 
     application = Application.builder().token(TOKEN).build()
 
-    # Menggunakan ConversationHandler tunggal yang mencakup start, tahapan hitung, hingga tombol ulang
+    # ConversationHandler menangani alur utama DAN tombol ulang di dalam fallbacks/entry_points agar tetap aktif
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        entry_points=[
+            CommandHandler("start", start),
+            CallbackQueryHandler(button_callback, pattern="ulang")
+        ],
         states={
             GET_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_price)],
             GET_DP: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_dp)],
@@ -247,6 +250,7 @@ def main() -> None:
             CommandHandler("cancel", cancel),
             CallbackQueryHandler(button_callback, pattern="ulang")
         ],
+        per_message=False,
     )
 
     application.add_handler(conv_handler)
