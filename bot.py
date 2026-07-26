@@ -149,7 +149,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
         if tenor_input not in pilihan_valid:
             await update.message.reply_text(
-                "⚠️ **Tenor tidak ada di pilihan!**\n"
+                "⚠️ Tenor tidak ada di pilihan!\n"
                 f"Silakan masukkan tenor yang tersedia untuk kategori ini: ({', '.join(map(str, pilihan_valid))}) bulan."
             )
             return GET_TENOR
@@ -210,7 +210,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text(pesan_hasil, parse_mode="Markdown", reply_markup=reply_markup)
         return ConversationHandler.END
     except ValueError:
-        await update.message.reply_text("⚠️ **Tenor tidak ada di pilihan!** Masukkan angka bulat untuk jumlah bulan yang valid:")
+        await update.message.reply_text("⚠️ Tenor tidak ada di pilihan! Masukkan angka bulat untuk jumlah bulan yang valid:")
         return GET_TENOR
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
