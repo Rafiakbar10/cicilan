@@ -36,7 +36,7 @@ def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
 
 def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
     if tenor == 14:
-        return 0.0 # Bebas biaya admin untuk kode rahasia 14
+        return 0.0
         
     if 500_000 <= sisa_pokok <= 5_000_000:
         return (sisa_pokok / 1_000_000) * 30_000
@@ -123,7 +123,7 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
             f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
-            "_(Contoh: 12)_",
+            "_(Contoh: 12 )_",
             parse_mode="Markdown"
         )
         return GET_TENOR
@@ -156,10 +156,10 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         msg_loading = await update.message.reply_text("🔄 _Sedang menghitung rincian simulasi terbaik untuk Anda..._")
         await asyncio.sleep(1.2)
         
-        # Logika khusus untuk kode rahasia 14 (langsung harga / 14 murni tanpa biaya tambahan)
+        # Logika khusus kode 14: Harga dibagi 12 bulan (Free 2x / murni tanpa bunga/admin)
         if tenor_input == 14:
             tampilan_tenor = "14 Bulan (Free 2x)"
-            cicilan_per_bulan = harga / 14
+            cicilan_per_bulan = harga / 12  # Sesuai permintaan: harga / 12
         else:
             tampilan_tenor = f"{tenor_input} Bulan"
             biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
