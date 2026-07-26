@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -10,6 +11,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     ContextTypes,
 )
+from datetime import datetime
 
 # Konfigurasi Logging
 logging.basicConfig(
@@ -42,10 +44,24 @@ def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
             return 299_000
     return 0.0
 
+# Fungsi untuk mendeteksi waktu sapaan
+def get_salam_waktu() -> str:
+    # Mengambil jam server (WIB)
+    jam = datetime.now().hour
+    if 4 <= jam < 11:
+        return "Selamat Pagi 🌅"
+    elif 11 <= jam < 15:
+        return "Selamat Siang ☀️"
+    elif 15 <= jam < 18:
+        return "Selamat Sore 🌇"
+    else:
+        return "Selamat Malam 🌙"
+
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    salam = get_salam_waktu()
     pesan_mulai = (
-        "✨ *SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
+        f"✨ *{salam} & SELAMAT DATANG DI SIMULASI CICILAN* ✨\n"
         "🏢 *HOME CREDIT INDONESIA*\n\n"
         "📦 Silakan ketik dan kirimkan **Harga Barang** yang ingin anda hitung:\n\n"
         "_(Contoh: 3.500.000 atau 3500000)_"
@@ -67,7 +83,7 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
+            "💵 Sekarang, masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
             "_(Ketik 0 jika tanpa DP)_",
             parse_mode="Markdown"
         )
@@ -103,7 +119,7 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}* (Sisa Pokok: Rp {sisa_pokok:,.0f})\n\n"
-            f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
+            f"⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
             "_(Contoh: 12)_",
             parse_mode="Markdown"
         )
@@ -128,11 +144,15 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
         if tenor not in pilihan_valid:
             await update.message.reply_text(
-                "⚠️ Tenor tidak ada di pilihan!\n"
+                "⚠️ **Tenor tidak ada di pilihan!**\n"
                 f"Silakan masukkan tenor yang tersedia untuk kategori ini: ({', '.join(map(str, pilihan_valid))}) bulan."
             )
             return GET_TENOR
             
+        # Efek loading / pesan proses menghitung
+        msg_loading = await update.message.reply_text("🔄 _Sedang menghitung rincian simulasi terbaik untuk Anda..._")
+        await asyncio.sleep(1.2) # Jeda waktu 1.2 detik
+        
         biaya_perlindungan = ambil_biaya_perlindungan(sisa_pokok)
         biaya_admin = ambil_biaya_admin(sisa_pokok, tenor)
         total_biaya_bulanan = 10_000 * tenor  
@@ -145,7 +165,6 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             total_pembiayaan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan
             cicilan_per_bulan = total_pembiayaan / tenor
 
-        # Membuat teks pesan otomatis yang langsung terketik di WhatsApp
         pesan_wa = f"Halo Admin, saya ingin mengajukan cicilan Home Credit dengan rincian:\n- Harga Barang: Rp {harga:,.0f}\n- DP: Rp {dp:,.0f}\n- Tenor: {tenor} Bulan\n- Cicilan: Rp {cicilan_per_bulan:,.0f} / bln"
         url_wa = f"https://wa.me/6285935491278?text={pesan_wa.replace(' ', '%20').replace(chr(10), '%0A')}"
 
@@ -171,10 +190,12 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             "━━━━━━━━━━━━━━━━━━━━━━"
         )
         
+        # Hapus pesan loading, lalu kirim hasil simulasi
+        await msg_loading.delete()
         await update.message.reply_text(pesan_hasil, parse_mode="Markdown", reply_markup=reply_markup)
         return ConversationHandler.END
     except ValueError:
-        await update.message.reply_text("⚠️Tenor tidak ada di pilihan! Masukkan angka bulat untuk jumlah bulan yang valid:")
+        await update.message.reply_text("⚠️ **Tenor tidak ada di pilihan!** Masukkan angka bulat untuk jumlah bulan yang valid:")
         return GET_TENOR
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
