@@ -12,6 +12,7 @@ from telegram.ext import (
     ContextTypes,
 )
 from datetime import datetime
+import zoneinfo
 
 # Konfigurasi Logging
 logging.basicConfig(
@@ -47,9 +48,10 @@ def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
             return 299_000
     return 0.0
 
-# Fungsi untuk mendeteksi waktu sapaan menggunakan waktu server lokal
+# Fungsi untuk mendeteksi waktu sapaan khusus terkunci ke Zona Waktu Indonesia (WIB)
 def get_salam_waktu() -> str:
-    jam = datetime.now().hour
+    zona_waktu_wib = zoneinfo.ZoneInfo("Asia/Jakarta")
+    jam = datetime.now(zona_waktu_wib).hour
     
     if 4 <= jam < 11:
         return "SELAMAT PAGI 🌅"
@@ -116,14 +118,14 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             return GET_DP
         
         if 500_000 <= sisa_pokok <= 5_000_000:
-            info_tenor = "pilihan: 3, 6, 9, 12, 14 bulan"
+            info_tenor = "pilihan: 3, 6, 9, 12 bulan"
         else:
-            info_tenor = "pilihan: 3, 6, 9, 12, 14, 15, 18, 21, 24 bulan"
+            info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
             
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
             f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
-            "_(Contoh: 12)_",
+            "_(Contoh: 12 )_",
             parse_mode="Markdown"
         )
         return GET_TENOR
@@ -208,7 +210,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text(pesan_hasil, parse_mode="Markdown", reply_markup=reply_markup)
         return ConversationHandler.END
     except ValueError:
-        await update.message.reply_text("⚠️ Tenor tidak ada di pilihan! Masukkan angka bulat untuk jumlah bulan yang valid:")
+        await update.message.reply_text("⚠️ **Tenor tidak ada di pilihan!** Masukkan angka bulat untuk jumlah bulan yang valid:")
         return GET_TENOR
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
