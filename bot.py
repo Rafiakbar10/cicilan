@@ -116,9 +116,9 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             return GET_DP
         
         if 500_000 <= sisa_pokok <= 5_000_000:
-            info_tenor = "pilihan: 3, 6, 9, 12, 14 bulan"
+            info_tenor = "pilihan: 3, 6, 9, 12 bulan"
         else:
-            info_tenor = "pilihan: 3, 6, 9, 12, 14, 15, 18, 21, 24 bulan"
+            info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
             
         await update.message.reply_text(
             f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
