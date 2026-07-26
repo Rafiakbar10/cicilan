@@ -156,7 +156,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             
         # Efek loading / pesan proses menghitung
         msg_loading = await update.message.reply_text("🔄 _Sedang menghitung rincian simulasi terbaik untuk Anda..._")
-        await asyncio.sleep(1.2)
+        await asyncio.sleep(2.1)
         
         # Logika khusus kode 14: Harga dibagi 12 bulan (Free 2x / murni tanpa bunga/admin)
         if tenor_input == 14:
