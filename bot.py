@@ -24,7 +24,7 @@ DAFTAR_TENOR_UMUM = [3, 6, 9, 12, 15, 18, 21, 24]
 DAFTAR_TENOR_PENDEK = [3, 6, 9, 12]
 
 def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
-    if 1_000_000 <= sisa_pokok <= 10_000_000:
+    if 500_000 <= sisa_pokok <= 10_000_000:
         return 599_000
     elif 10_000_000 < sisa_pokok <= 30_000_000:
         return 899_000
@@ -33,7 +33,7 @@ def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
     return 0.0
 
 def ambil_biaya_admin(sisa_pokok: float, tenor: int) -> float:
-    if 1_000_000 <= sisa_pokok <= 5_000_000:
+    if 500_000 <= sisa_pokok <= 5_000_000:
         return (sisa_pokok / 1_000_000) * 30_000
     else:
         if tenor in [3, 6, 9, 12]:
@@ -59,13 +59,15 @@ async def receive_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     text = update.message.text.replace(".", "").replace(",", "").strip()
     try:
         harga = float(text)
-        if harga <= 0:
-            raise ValueError
+        if harga < 500_000:
+            await update.message.reply_text("⚠️ Minimal harga barang adalah Rp 500.000. Silakan masukkan harga yang valid:")
+            return GET_PRICE
+            
         context.user_data["harga"] = harga
         
         await update.message.reply_text(
             f"✅ Harga Barang tercatat: *Rp {harga:,.0f}*\n\n"
-            "💵 Sekarang, masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
+            "💵 Masukkan jumlah **Uang Muka (DP)** yang ingin dibayarkan\n\n"
             "_(Ketik 0 jika tanpa DP)_",
             parse_mode="Markdown"
         )
@@ -90,14 +92,18 @@ async def receive_dp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         context.user_data["dp"] = dp
         sisa_pokok = harga - dp
         
-        if 1_000_000 <= sisa_pokok <= 5_000_000:
+        if sisa_pokok < 500_000:
+            await update.message.reply_text("⚠️ Sisa pokok setelah DP minimal Rp 500.000. Silakan masukkan nominal DP yang lain:")
+            return GET_DP
+        
+        if 500_000 <= sisa_pokok <= 5_000_000:
             info_tenor = "pilihan: 3, 6, 9, 12 bulan"
         else:
             info_tenor = "pilihan: 3, 6, 9, 12, 15, 18, 21, 24 bulan"
             
         await update.message.reply_text(
-            f"✅ DP tercatat: *Rp {dp:,.0f}*\n\n"
-            f"⏳ Sekarang, masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
+            f"✅ DP tercatat: *Rp {dp:,.0f}* (Sisa Pokok: Rp {sisa_pokok:,.0f})\n\n"
+            f"⏳ Masukkan **Tenor Cicilan** dalam satuan bulan ({info_tenor})\n\n"
             "_(Contoh: 12)_",
             parse_mode="Markdown"
         )
@@ -115,14 +121,14 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         dp = context.user_data["dp"]
         sisa_pokok = harga - dp
         
-        if 1_000_000 <= sisa_pokok <= 5_000_000:
+        if 500_000 <= sisa_pokok <= 5_000_000:
             pilihan_valid = DAFTAR_TENOR_PENDEK
         else:
             pilihan_valid = DAFTAR_TENOR_UMUM
 
         if tenor not in pilihan_valid:
             await update.message.reply_text(
-                "⚠️ **Tenor tidak ada di pilihan!**\n"
+                "⚠️ Tenor tidak ada di pilihan!\n"
                 f"Silakan masukkan tenor yang tersedia untuk kategori ini: ({', '.join(map(str, pilihan_valid))}) bulan."
             )
             return GET_TENOR
@@ -131,7 +137,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         biaya_admin = ambil_biaya_admin(sisa_pokok, tenor)
         total_biaya_bulanan = 10_000 * tenor  
         
-        if 1_000_000 <= sisa_pokok <= 5_000_000:
+        if 500_000 <= sisa_pokok <= 5_000_000:
             total_bunga = (sisa_pokok * 0.0225) * tenor
             total_keseluruhan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan + total_bunga
             cicilan_per_bulan = total_keseluruhan / tenor
@@ -139,8 +145,12 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             total_pembiayaan = sisa_pokok + biaya_perlindungan + biaya_admin + total_biaya_bulanan
             cicilan_per_bulan = total_pembiayaan / tenor
 
+        # Membuat teks pesan otomatis yang langsung terketik di WhatsApp
+        pesan_wa = f"Halo Admin, saya ingin mengajukan cicilan Home Credit dengan rincian:\n- Harga Barang: Rp {harga:,.0f}\n- DP: Rp {dp:,.0f}\n- Tenor: {tenor} Bulan\n- Cicilan: Rp {cicilan_per_bulan:,.0f} / bln"
+        url_wa = f"https://wa.me/6285935491278?text={pesan_wa.replace(' ', '%20').replace(chr(10), '%0A')}"
+
         keyboard = [
-            [InlineKeyboardButton("💬 Hubungi WhatsApp Admin", url="https://wa.me/6285935491278")],
+            [InlineKeyboardButton("💬 Hubungi WhatsApp Admin", url=url_wa)],
             [InlineKeyboardButton("🔄 Hitung Simulasi Baru", callback_data="ulang")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -164,7 +174,7 @@ async def receive_tenor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text(pesan_hasil, parse_mode="Markdown", reply_markup=reply_markup)
         return ConversationHandler.END
     except ValueError:
-        await update.message.reply_text("⚠️ **Tenor tidak ada di pilihan!** Masukkan angka bulat untuk jumlah bulan yang valid:")
+        await update.message.reply_text("⚠️Tenor tidak ada di pilihan! Masukkan angka bulat untuk jumlah bulan yang valid:")
         return GET_TENOR
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
