@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # State untuk ConversationHandler: Harga -> DP -> Tenor
 GET_PRICE, GET_DP, GET_TENOR = range(3)
 
-DAFTAR_TENOR_UMUM = [3, 6, 9, 12, 15, 18, 21, 24]
+DAFTAR_TENOR_UMUM = [3, 6, 9, 12, 14, 15, 18, 21, 24]
 DAFTAR_TENOR_PENDEK = [3, 6, 9, 12]
 
 def ambil_biaya_perlindungan(sisa_pokok: float) -> float:
